@@ -10620,6 +10620,9 @@ function initGba(){
  gba.setLogger((l,e)=>{console.log(e);msg('GBAエラー: '+e)});
  // 実機(59.73fps)に合わせた時間ベースのフレーム制御(音ズレ・速度ムラ対策)
  gba.throttle=6;
+ // gbajsのゲームパッド処理は現代のブラウザでキー入力を上書き消してしまうため無効化し、読み取り回数だけ数える
+ gba.keypad.reads=0;
+ gba.keypad.pollGamepads=function(){this.reads++};
  const adv=gba.advanceFrame.bind(gba);
  gba.advanceFrame=function(){
   const n=performance.now();pace.acc+=Math.min(n-pace.last,100);pace.last=n;
@@ -10679,7 +10682,7 @@ setInterval(()=>{
  if(mode!=='gba'||!gba||!gba.audio)return;
  const a=gba.audio;a.masterEnable=true;
  if(a.context&&a.enabled&&!paused){try{a.jsAudio.connect(a.context.destination)}catch(e){}}
- document.getElementById('au').textContent='GBA音声: '+(a.context?a.context.state:'非対応')+' / ゲーム側'+(a.enabled?'ON':'OFF')+' / 処理'+(a.totalSamples|0)+' / 不足'+(a.backup|0);
+ document.getElementById('au').textContent='GBA音声: '+(a.context?a.context.state:'非対応')+' / ゲーム側'+(a.enabled?'ON':'OFF')+' / 処理'+(a.totalSamples|0)+' / 不足'+(a.backup|0)+' / キー読取'+gba.keypad.reads+' 状態'+(gba.keypad.currentDown&0x3FF).toString(2).padStart(10,'0');
 },1000);
 // タッチ操作
 const js={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,SELECT:false,START:false};
