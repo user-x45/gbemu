@@ -5846,7 +5846,7 @@ function GameBoyAdvanceAudio() {
 		var self = this;
 		this.context = new AudioContext();
 		this.bufferSize = 0;
-		this.bufferSize = 4096;
+		this.bufferSize = 2048;
 		this.maxSamples = this.bufferSize << 2;
 		this.buffers = [new Float32Array(this.maxSamples), new Float32Array(this.maxSamples)];
 		this.sampleMask = this.maxSamples - 1;
@@ -10618,7 +10618,17 @@ function initGba(){
  gba=new GameBoyAdvance();gba.logLevel=gba.LOG_ERROR;
  gba.setCanvasDirect(cva);gba.setBios(BIOS);
  gba.setLogger((l,e)=>{console.log(e);msg('GBAエラー: '+e)});
+ // 実機(59.73fps)に合わせた時間ベースのフレーム制御(音ズレ・速度ムラ対策)
+ gba.throttle=6;
+ const adv=gba.advanceFrame.bind(gba);
+ gba.advanceFrame=function(){
+  const n=performance.now();pace.acc+=Math.min(n-pace.last,100);pace.last=n;
+  if(pace.acc>50)pace.acc=50;
+  let c=0;while(pace.acc>=16.743&&c<3){adv();pace.acc-=16.743;c++}
+ };
 }
+const pace={last:0,acc:0};
+function runGba(){pace.last=performance.now();pace.acc=0;gba.runStable()}
 function show(m){cv.style.display=m==='gb'?'block':'none';cva.style.display=m==='gba'?'block':'none'}
 async function stopAll(){try{if(ready&&mode==='gb')await W.pause()}catch(e){}try{if(gba)gba.pause()}catch(e){}}
 document.getElementById('f').onchange=async e=>{
@@ -10630,7 +10640,7 @@ document.getElementById('f').onchange=async e=>{
   if(ext==='gba'){
    initGba();gbaBuf=await file.arrayBuffer();
    if(!gba.setRom(gbaBuf))throw new Error('GBA ROMを読み込めません');
-   mode='gba';show('gba');gba.runStable();
+   mode='gba';show('gba');runGba();
   }else{
    if(!W)throw new Error('GB用ライブラリの読み込みに失敗');
    mode='gb';show('gb');
@@ -10641,13 +10651,13 @@ document.getElementById('f').onchange=async e=>{
 };
 document.getElementById('pp').onclick=async()=>{
  if(!ready)return;paused=!paused;
- if(mode==='gba')paused?gba.pause():gba.runStable();
+ if(mode==='gba')paused?gba.pause():runGba();
  else paused?await W.pause():await W.play();
  document.getElementById('pp').textContent=paused?'再開':'一時停止';
 };
 document.getElementById('rs').onclick=async()=>{
  if(!ready)return;paused=false;document.getElementById('pp').textContent='一時停止';
- if(mode==='gba'){gba.pause();gba.setRom(gbaBuf);gba.runStable()}
+ if(mode==='gba'){gba.pause();gba.setRom(gbaBuf);runGba()}
  else{await W.reset();await W.play()}
 };
 document.getElementById('sv').onclick=async()=>{
@@ -10674,7 +10684,13 @@ setInterval(()=>{
 // タッチ操作
 const js={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,SELECT:false,START:false};
 const GI={A:0,B:1,SELECT:2,START:3,RIGHT:4,LEFT:5,UP:6,DOWN:7,R:8,L:9};
+// 短いタップが1フレームに満たず取りこぼされるのを防ぐため、最低100ms押下を保持
+const downAt={},relT={};
 function press(k,v){
+ if(v){downAt[k]=performance.now();clearTimeout(relT[k]);doPress(k,true)}
+ else{const w=Math.max(0,100-(performance.now()-(downAt[k]||0)));clearTimeout(relT[k]);relT[k]=setTimeout(()=>doPress(k,false),w)}
+}
+function doPress(k,v){
  if(mode==='gba'&&gba){v?gba.keypad.keydown(GI[k]):gba.keypad.keyup(GI[k])}
  else if(mode==='gb'&&k in js){js[k]=v;if(W.setJoypadState)W.setJoypadState({...js})}
 }
