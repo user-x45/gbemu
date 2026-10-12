@@ -10635,7 +10635,7 @@ document.getElementById('f').onchange=async e=>{
    mode='gb';show('gb');
    await W.config(cfg,cv);await W.loadROM(file);await W.play();
   }
-  ready=true;msg('起動中: '+file.name);
+  ready=true;resumeAudio();setTimeout(resumeAudio,300);msg('起動中: '+file.name+'(音が出ない場合は画面を一度タップ)');
  }catch(err){console.error(err);msg('エラー: '+(err.message||err))}
 };
 document.getElementById('pp').onclick=async()=>{
@@ -10657,6 +10657,12 @@ document.getElementById('ld').onclick=async()=>{
  if(!ready||!saved)return msg('セーブデータがありません');
  try{if(mode==='gba'){gba.defrost(saved);}else{await W.loadState(saved);await W.play()}msg('ロードしました')}catch(e){msg('ロード失敗')}
 };
+// 音声: ブラウザの自動再生制限のため、操作のたびにAudioContextを再開する
+function resumeAudio(){
+ try{if(gba&&gba.audio&&gba.audio.context&&gba.audio.context.state!=='running')gba.audio.context.resume()}catch(e){}
+ try{if(W&&W.resumeAudioContext)W.resumeAudioContext()}catch(e){}
+}
+['pointerdown','keydown','touchend','click'].forEach(n=>window.addEventListener(n,resumeAudio,true));
 // タッチ操作
 const js={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,SELECT:false,START:false};
 const GI={A:0,B:1,SELECT:2,START:3,RIGHT:4,LEFT:5,UP:6,DOWN:7,R:8,L:9};
