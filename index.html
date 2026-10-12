@@ -29,6 +29,7 @@ label.btn{background:var(--ac);color:#fff;border:0}
 <button id="pp">一時停止</button><button id="rs">リセット</button><button id="sv">セーブ</button><button id="ld">ロード</button>
 </div>
 <div id="st">ROM(.gb / .gbc / .gba)を選択してください</div>
+<div id="au" class="small"></div>
 <div class="bar"><button class="k d" style="width:90px;border-radius:10px;height:40px" data-k="L">L</button><button class="k d" style="width:90px;border-radius:10px;height:40px" data-k="R">R</button></div>
 <div class="ctl">
 <div class="pad">
@@ -10663,6 +10664,13 @@ function resumeAudio(){
  try{if(W&&W.resumeAudioContext)W.resumeAudioContext()}catch(e){}
 }
 ['pointerdown','keydown','touchend','click'].forEach(n=>window.addEventListener(n,resumeAudio,true));
+// GBA音声: 接続切れの自己修復と状態表示(診断用)
+setInterval(()=>{
+ if(mode!=='gba'||!gba||!gba.audio)return;
+ const a=gba.audio;a.masterEnable=true;
+ if(a.context&&a.enabled&&!paused){try{a.jsAudio.connect(a.context.destination)}catch(e){}}
+ document.getElementById('au').textContent='GBA音声: '+(a.context?a.context.state:'非対応')+' / ゲーム側'+(a.enabled?'ON':'OFF')+' / 処理'+(a.totalSamples|0)+' / 不足'+(a.backup|0);
+},1000);
 // タッチ操作
 const js={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,SELECT:false,START:false};
 const GI={A:0,B:1,SELECT:2,START:3,RIGHT:4,LEFT:5,UP:6,DOWN:7,R:8,L:9};
